@@ -1,4 +1,7 @@
 {
+  "engines": {
+    "node": ">=7.6"
+  },
   "dependencies": {
     "canvas": "^1.6.5",
     "request": "^2.81.0"
