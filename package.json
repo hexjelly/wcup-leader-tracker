@@ -3,7 +3,8 @@
     "node": ">=7.6"
   },
   "dependencies": {
-    "canvas": "^1.6.5",
+    "dot": "^1.1.1",
+    "mkdirp": "^0.5.1",
     "request": "^2.81.0"
   }
 }

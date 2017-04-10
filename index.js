@@ -1,13 +1,17 @@
-const ctx = require("canvas")
 const request = require("request")
 const fs = require("fs")
+const dots = require("dot").process({ path: "./views" })
+const mkdirp = require('mkdirp')
 
-// let levelId = 371127
-// let url = `http://elmaonline.net/API/times/${levelId}?bestall=all&noorder=0&timeformat=hs`
 
-// request(url, (error, response, body) => {
-//   console.log(body)
-// })
+// wc701: 371127
+function fetchData(levelId, cb) {
+  let url = `http://elmaonline.net/API/times/${levelId}?bestall=all&noorder=0&timeformat=hs`
+  request(url, (error, response, body) => {
+    if (error) { cb(error) }
+    cb(null, body)
+  })
+}
 
 let data = Object.values(JSON.parse(fs.readFileSync('wc701_data.json', 'utf8')))
 
@@ -36,4 +40,10 @@ data.forEach(time => {
   }
 })
 
-console.log(leaders)
+// write file from template
+let test = dots.index({ json: JSON.stringify(leaders) });
+
+mkdirp('./dist', err => {
+    if (err) console.error(err)
+    fs.writeFileSync('./dist/index.html', test)
+})

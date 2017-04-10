@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>WCup Leader Stats</title>
+    <script src="https://code.highcharts.com/highcharts.src.js"></script>
+    <script>
+      {{=it.json}}
+    </script>
+  </head>
+  <body>
+    {{=it.test}}
+  </body>
+</html>
