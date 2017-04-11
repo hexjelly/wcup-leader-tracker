@@ -4,7 +4,7 @@ const dots = require("dot").process({ path: "./views" })
 const mkdirp = require('mkdirp')
 
 
-// wc701: 371127
+
 function fetchData(levelId, cb) {
   let url = `http://elmaonline.net/API/times/${levelId}?bestall=all&noorder=0&timeformat=hs`
   request(url, (error, response, body) => {
@@ -15,12 +15,7 @@ function fetchData(levelId, cb) {
 
 function timeConversion(millisec) {
   let date = new Date(millisec)
-  var str = ''
-  str += date.getUTCDate()-1 + " days, "
-  str += date.getUTCHours() + " hours, "
-  str += date.getUTCMinutes() + " minutes, "
-  str += date.getUTCSeconds() + " seconds"
-  return str
+  return `${date.getUTCDate()-1} days, ${date.getUTCHours()} hrs, ${date.getUTCMinutes()} mins, ${date.getUTCSeconds()} secs`
 }
 
 function writeHTML() {
@@ -32,38 +27,51 @@ function writeHTML() {
 }
 
 
+
+function calculateStats(data, deadline) {
+  // convert string dates to Date objects, make up for -7hr timezone difference to UTC (?)
+  // might need to edit this to take into consideration something, not sure yet
+  data.forEach(val => {
+    val.datetime = new Date(val.datetime)
+    val.datetime.setHours(val.datetime.getHours() + 7)
+  })
+
+  data.sort((a, b) => {
+    return a.datetime - b.datetime
+  })
+
+  let leaders = []
+  let durations = {}
+
+  data.forEach(entry => {
+    // check if before deadline
+    if (entry.datetime.getTime() < deadline.getTime()) {
+      if (leaders.length > 0) {
+        if (parseInt(entry.time) < parseInt(leaders[leaders.length-1].time)) { // better than last leading time
+          if (durations[entry.kuski] === undefined) durations[entry.kuski] = 0
+          durations[leaders[leaders.length-1].name] += Math.abs(leaders[leaders.length-1].date - entry.datetime)
+          leaders.push({ name: entry.kuski, time: parseInt(entry.time), date: entry.datetime })
+        }
+      } else { // first time
+        leaders.push({ name: entry.kuski, time: parseInt(entry.time), date: entry.datetime })
+        durations[entry.kuski] = 0
+      }
+    }
+  })
+
+  // finally add remaining time up to deadline to leader
+  durations[leaders[leaders.length-1].name] += Math.abs(leaders[leaders.length-1].date - deadline)
+
+  return { leaders: leaders, durations: durations }
+}
+
+// wc701
+let deadline = new Date('2017-02-26 17:00')
+let levelId = 371127
+
 let data = Object.values(JSON.parse(fs.readFileSync('wc701_data.json', 'utf8')))
 
-data.forEach(val => {
-  val.datetime = new Date(val.datetime)
-  val.datetime.setHours(val.datetime.getHours() + 7)
-})
+let { leaders, durations } = calculateStats(data, deadline)
 
-data.sort((a, b) => {
-  return a.datetime - b.datetime
-})
 
-let deadline = new Date('2017-02-26 17:00')
-let leaders = []
-let duration = {}
-
-data.forEach(entry => {
-  // check if before deadline
-  if (entry.datetime.getTime() < deadline.getTime()) {
-    if (leaders.length > 0) {
-      if (parseInt(entry.time) < parseInt(leaders[leaders.length-1].time)) { // better than last leading time
-        if (duration[entry.kuski] === undefined) duration[entry.kuski] = 0
-        duration[leaders[leaders.length-1].name] += Math.abs(leaders[leaders.length-1].date - entry.datetime)
-        leaders.push({ name: entry.kuski, time: parseInt(entry.time), date: entry.datetime })
-      }
-    } else { // first time
-      leaders.push({ name: entry.kuski, time: parseInt(entry.time), date: entry.datetime })
-      duration[entry.kuski] = 0
-    }
-  }
-})
-
-// finally add remaining time up to deadline to leader
-duration[leaders[leaders.length-1].name] += Math.abs(leaders[leaders.length-1].date - deadline)
-
-console.log(timeConversion(duration['Kazan']))
+console.log(timeConversion(durations['Kazan']))
