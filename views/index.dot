@@ -5,10 +5,12 @@
     <title>WCup Leader Stats</title>
     <script src="https://code.highcharts.com/highcharts.src.js"></script>
     <script>
-      {{=it.json}}
+      document.addEventListener("DOMContentLoaded", event => {
+        let myChart = Highcharts.chart('container', {{=it.chart}})
+      })
     </script>
   </head>
   <body>
-    {{=it.test}}
+    <div id="container" style="width:100%; height:400px;"></div>
   </body>
 </html>

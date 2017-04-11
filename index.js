@@ -1,8 +1,7 @@
 const request = require("request")
 const fs = require("fs")
-const dots = require("dot").process({ path: "./views" })
+const dots = require("dot").process({ path: "./views", templateSettings: { strip: false } })
 const mkdirp = require('mkdirp')
-
 
 
 function fetchData(levelId, cb) {
@@ -18,11 +17,11 @@ function timeConversion(millisec) {
   return `${date.getUTCDate()-1} days, ${date.getUTCHours()} hrs, ${date.getUTCMinutes()} mins, ${date.getUTCSeconds()} secs`
 }
 
-function writeHTML() {
-  // let test = dots.index({ json: JSON.stringify(leaders) })
+function writeHTML(data) {
+  data = dots.index(data, { strip: false })
   mkdirp('./dist', err => {
       if (err) console.error(err)
-      fs.writeFileSync('./dist/index.html', test)
+      fs.writeFileSync('./dist/index.html', data)
   })
 }
 
@@ -65,13 +64,46 @@ function calculateStats(data, deadline) {
   return { leaders: leaders, durations: durations }
 }
 
-// wc701
-let deadline = new Date('2017-02-26 17:00')
-let levelId = 371127
+function produceChart(data, startDate, endDate, options) {
+  let startFormatted = Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate(),
+    startDate.getUTCHours(), startDate.getUTCMinutes())
+  let endFormatted = Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate(),
+    endDate.getUTCHours(), endDate.getUTCMinutes())
+  let { leaders, durations } = calculateStats(data, endDate)
 
+  let chart = {
+    chart: {
+      type: 'line'
+    },
+    // data: { dateFormat: 'YYYY-mm-dd' },
+    title: {
+      text: options.title || ''
+    },
+    series: [{
+      data: []
+    }],
+    xAxis: {
+      type: 'datetime',
+      tickInterval: 3600 * 1000 * 6,
+      min: startFormatted,
+      max: endFormatted,
+    }
+  }
+
+  leaders.forEach(entry => {
+    let dateFormatted = Date.UTC(entry.date.getUTCFullYear(), entry.date.getUTCMonth(), entry.date.getUTCDate(),
+      entry.date.getUTCHours(), entry.date.getUTCMinutes())
+    chart.series[0].data.push([dateFormatted, entry.time])
+  })
+
+  return chart
+}
+
+// wc701
+let startDate = new Date('2017-02-19 19:00')
+let endDate = new Date('2017-02-26 17:00')
+let levelId = 371127
 let data = Object.values(JSON.parse(fs.readFileSync('wc701_data.json', 'utf8')))
 
-let { leaders, durations } = calculateStats(data, deadline)
-
-
-console.log(timeConversion(durations['Kazan']))
+let chartData = produceChart(data, startDate, endDate, { title: '', levelId: levelId })
+writeHTML({ chart: JSON.stringify(chartData, null, 2) })
