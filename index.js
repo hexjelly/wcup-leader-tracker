@@ -202,9 +202,19 @@ function produceChart(data, startDate, endDate, options) {
 // })
 
 // wc707
-let startDate = new Date('2017-04-02 17:00')
-let endDate = new Date('2017-04-09 17:00')
-let levelId = 374907
+// let startDate = new Date('2017-04-02 17:00')
+// let endDate = new Date('2017-04-09 17:00')
+// let levelId = 374907
+// fetchData(levelId, (err, data) => {
+//   data = Object.values(JSON.parse(data))
+//   let chartData = produceChart(data, startDate, endDate, { title: '', levelId: levelId })
+//   writeHTML({ chart: JSON.stringify(chartData, null, 2) })
+// })
+
+// wc708
+let startDate = new Date('2017-04-09 17:00')
+let endDate = new Date('2017-04-16 17:00')
+let levelId = 376243
 fetchData(levelId, (err, data) => {
   data = Object.values(JSON.parse(data))
   let chartData = produceChart(data, startDate, endDate, { title: '', levelId: levelId })
