@@ -40,6 +40,7 @@ function calculateStats(data, deadline) {
   })
 
   let leaders = []
+  let leadersDict = []
   let durations = {}
 
   data.forEach(entry => {
@@ -85,68 +86,49 @@ function produceChart(data, startDate, endDate, options) {
   let { leaders, durations } = calculateStats(data, endDate)
 
   let chart = {
+    chart: {
+      type: 'columnrange',
+      inverted: true
+    },
     title: {
       text: options.title || ''
     },
+    xAxis: {
+        categories: []
+    },
     series: [{
       data: [],
-      lineWidth: 1,
-      showInLegend: false,
-      name: 'Time',
-      zoneAxis: 'x',
-        zones: []
+      name: "Date"
     }],
-    xAxis: {
+    yAxis: {
       type: 'datetime',
       tickInterval: 3600 * 1000 * 12,
       min: startFormatted,
       max: endFormatted,
       title: { text: 'Date' }
     },
-    yAxis: {
-      title: { text: 'Time' },
-    },
-    plotOptions: {
-      line: {
-        dataLabels: {
-          enabled: true,
-          format: '{point.name}',
-          allowOverlap: true,
-          defer: false,
-          // rotation: -30,
-          crop: false
-        },
-        marker: {
-          enabled: true,
-          radius: 3
-        }
-      },
-      series: {
-            states: {
-                hover: {
-                    enabled: false
-                }
-            }
-        }
-    }
   }
 
-  leaders.forEach(entry => {
-    let dateFormatted = Date.UTC(entry.date.getUTCFullYear(), entry.date.getUTCMonth(), entry.date.getUTCDate(),
-      entry.date.getUTCHours(), entry.date.getUTCMinutes())
-    chart.series[0].data.push({ x: dateFormatted, y: entry.time, name: entry.name, marker: { fillColor: hashColor(entry.name) } })
-    chart.series[0].zones.push({
-        value: dateFormatted,
-        color: hashColor(entry.name)
-    })
-  })
-
-  let lastEntry = leaders[leaders.length-1]
-  let lastEntryDateFormatted = Date.UTC(lastEntry.date.getUTCFullYear(), lastEntry.date.getUTCMonth()+1, lastEntry.date.getUTCDate())
-  chart.series[0].data.push({ x: lastEntryDateFormatted, y: lastEntry.time, name: lastEntry.name })
-  chart.series[0].zones.push({
-      color: hashColor(lastEntry.name)
-  })
+  let xAxisNames = {}
+  for (let i = 0, total = leaders.length; i < total; i++) {
+    let name = leaders[i].name
+    let endDateFormatted
+    let startDateFormatted = Date.UTC(leaders[i].date.getUTCFullYear(), leaders[i].date.getUTCMonth(), leaders[i].date.getUTCDate(),
+      leaders[i].date.getUTCHours(), leaders[i].date.getUTCMinutes())
+    if (i+1 === total) {
+      endDateFormatted = Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth() + 1, endDate.getUTCDate(),
+        endDate.getUTCHours(), endDate.getUTCMinutes())
+    } else {
+      endDateFormatted = Date.UTC(leaders[i+1].date.getUTCFullYear(), leaders[i+1].date.getUTCMonth(), leaders[i+1].date.getUTCDate(),
+        leaders[i+1].date.getUTCHours(), leaders[i+1].date.getUTCMinutes())
+    }
+    if (!xAxisNames[name]) {
+      chart.xAxis.categories.push(name)
+      xAxisNames[name] = chart.xAxis.categories.length - 1
+    }
+    let xNum = xAxisNames[name]
+    chart.series[0].data.push({ x: xNum, low: startDateFormatted, high: endDateFormatted })
+  }
 
   return chart
 }
@@ -172,14 +154,14 @@ function produceChart(data, startDate, endDate, options) {
 // })
 
 // wc703
-// let startDate = new Date('2017-03-05 17:00')
-// let endDate = new Date('2017-03-12 18:00')
-// let levelId = 372197
-// fetchData(levelId, (err, data) => {
-//   data = Object.values(JSON.parse(data))
-//   let chartData = produceChart(data, startDate, endDate, { title: '', levelId: levelId })
-//   writeHTML({ chart: JSON.stringify(chartData, null, 2) })
-// })
+let startDate = new Date('2017-03-05 17:00')
+let endDate = new Date('2017-03-12 18:00')
+let levelId = 372197
+fetchData(levelId, (err, data) => {
+  data = Object.values(JSON.parse(data))
+  let chartData = produceChart(data, startDate, endDate, { title: '', levelId: levelId })
+  writeHTML({ chart: JSON.stringify(chartData, null, 2) })
+})
 
 // wc704
 // let startDate = new Date('2017-03-12 18:00')
@@ -212,11 +194,11 @@ function produceChart(data, startDate, endDate, options) {
 // })
 
 // wc708
-let startDate = new Date('2017-04-09 17:00')
-let endDate = new Date('2017-04-16 17:00')
-let levelId = 376243
-fetchData(levelId, (err, data) => {
-  data = Object.values(JSON.parse(data))
-  let chartData = produceChart(data, startDate, endDate, { title: '', levelId: levelId })
-  writeHTML({ chart: JSON.stringify(chartData, null, 2) })
-})
+// let startDate = new Date('2017-04-09 17:00')
+// let endDate = new Date('2017-04-16 17:00')
+// let levelId = 376243
+// fetchData(levelId, (err, data) => {
+//   data = Object.values(JSON.parse(data))
+//   let chartData = produceChart(data, startDate, endDate, { title: '', levelId: levelId })
+//   writeHTML({ chart: JSON.stringify(chartData, null, 2) })
+// })
