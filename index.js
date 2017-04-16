@@ -87,47 +87,32 @@ function produceChart(data, startDate, endDate, options) {
 
   let chart = {
     chart: {
-      type: 'columnrange',
-      inverted: true
+        plotBackgroundColor: null,
+        plotBorderWidth: null,
+        plotShadow: false,
+        type: 'pie'
     },
-    title: {
-      text: options.title || ''
+    tooltip: {
+        pointFormat: '{series.name}: <b>{point.percentage:.1f}%</b>'
     },
-    xAxis: {
-        categories: []
+    plotOptions: {
+        pie: {
+            allowPointSelect: true,
+            cursor: 'pointer',
+            dataLabels: {
+                enabled: true,
+                format: '<b>{point.name}</b>: {point.string}',
+                connectorColor: 'silver'
+            }
+        }
     },
     series: [{
-      data: [],
-      name: "Date"
-    }],
-    yAxis: {
-      type: 'datetime',
-      tickInterval: 3600 * 1000 * 12,
-      min: startFormatted,
-      max: endFormatted,
-      title: { text: 'Date' }
-    },
+        data: []
+    }]
   }
 
-  let xAxisNames = {}
-  for (let i = 0, total = leaders.length; i < total; i++) {
-    let name = leaders[i].name
-    let endDateFormatted
-    let startDateFormatted = Date.UTC(leaders[i].date.getUTCFullYear(), leaders[i].date.getUTCMonth(), leaders[i].date.getUTCDate(),
-      leaders[i].date.getUTCHours(), leaders[i].date.getUTCMinutes())
-    if (i+1 === total) {
-      endDateFormatted = Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth() + 1, endDate.getUTCDate(),
-        endDate.getUTCHours(), endDate.getUTCMinutes())
-    } else {
-      endDateFormatted = Date.UTC(leaders[i+1].date.getUTCFullYear(), leaders[i+1].date.getUTCMonth(), leaders[i+1].date.getUTCDate(),
-        leaders[i+1].date.getUTCHours(), leaders[i+1].date.getUTCMinutes())
-    }
-    if (!xAxisNames[name]) {
-      chart.xAxis.categories.push(name)
-      xAxisNames[name] = chart.xAxis.categories.length - 1
-    }
-    let xNum = xAxisNames[name]
-    chart.series[0].data.push({ x: xNum, low: startDateFormatted, high: endDateFormatted })
+  for (entry in durations) {
+    chart.series[0].data.push({ name: entry, y: durations[entry], string: timeConversion(durations[entry]) })
   }
 
   return chart
@@ -144,24 +129,24 @@ function produceChart(data, startDate, endDate, options) {
 // })
 
 // wc702
-// let startDate = new Date('2017-02-26 17:00')
-// let endDate = new Date('2017-03-05 17:00')
-// let levelId = 371726
-// fetchData(levelId, (err, data) => {
-//   data = Object.values(JSON.parse(data))
-//   let chartData = produceChart(data, startDate, endDate, { title: '', levelId: levelId })
-//   writeHTML({ chart: JSON.stringify(chartData, null, 2) })
-// })
-
-// wc703
-let startDate = new Date('2017-03-05 17:00')
-let endDate = new Date('2017-03-12 18:00')
-let levelId = 372197
+let startDate = new Date('2017-02-26 17:00')
+let endDate = new Date('2017-03-05 17:00')
+let levelId = 371726
 fetchData(levelId, (err, data) => {
   data = Object.values(JSON.parse(data))
   let chartData = produceChart(data, startDate, endDate, { title: '', levelId: levelId })
   writeHTML({ chart: JSON.stringify(chartData, null, 2) })
 })
+
+// wc703
+// let startDate = new Date('2017-03-05 17:00')
+// let endDate = new Date('2017-03-12 18:00')
+// let levelId = 372197
+// fetchData(levelId, (err, data) => {
+//   data = Object.values(JSON.parse(data))
+//   let chartData = produceChart(data, startDate, endDate, { title: '', levelId: levelId })
+//   writeHTML({ chart: JSON.stringify(chartData, null, 2) })
+// })
 
 // wc704
 // let startDate = new Date('2017-03-12 18:00')
