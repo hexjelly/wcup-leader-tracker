@@ -4,15 +4,60 @@
     <meta charset="utf-8">
     <title>WCup Leader Stats</title>
     <script src="https://code.highcharts.com/highcharts.src.js"></script>
-    <script src="https://code.highcharts.com/highcharts-more.js"></script>
-    <script src="https://code.highcharts.com/modules/exporting.js"></script>
     <script>
       document.addEventListener("DOMContentLoaded", event => {
-        let myChart = Highcharts.chart('container', {{=it.chart}})
+        let myChart = Highcharts.chart('container', {
+
+          chart: {
+              type: 'line',
+          },
+          title: { text: '{{=it.options.title}}' || '' },
+          series: {{=it.options.series}},
+          xAxis: {
+            type: 'datetime',
+            min: {{=it.options.startFormatted}},
+            max: {{=it.options.endFormatted}},
+            crosshair: true,
+            dateTimeLabelFormats: {
+              day: '%a %e %b %H:%M'
+            },
+            title: { text: 'Date' }
+          },
+          yAxis: {
+            min: {{=it.options.winTime}},
+            max: {{=it.options.winTime}} * 2,
+            tickInterval: 100,
+            minorTickInterval: 50,
+            title: { text: 'Time' },
+            labels: {
+              formatter: function() {
+                function leading0(number) { return number < 10 ? "0" : "" }
+                let mins = parseInt((this.value / 100) / 60)
+                let secs = parseInt((this.value / 100) % 60)
+                let huns = parseInt(this.value % 100)
+                return leading0(mins) + mins + ':' + leading0(secs) + secs + ',' + leading0(huns) + huns
+              }
+            }
+          },
+          plotOptions: {
+            series: {
+              dataLabels: {
+                enabled: true,
+                format: '{point.formatted}'
+              }
+            }
+          },
+          tooltip: {
+            pointFormat: '{series.name}: <b>{point.formatted}</b><br/>'
+          }
+
+        })
+
       })
     </script>
   </head>
   <body>
-    <div id="container" style="width:100%; height:400px;"></div>
+    <div id="container" style="width:100%; height:800px;"></div>
+    <div>{{=it.stats.durations}}</div>
   </body>
 </html>
