@@ -5,12 +5,116 @@
     <title>WCup Leader Stats</title>
     <script src="https://code.highcharts.com/highcharts.src.js"></script>
     <script>
+      function leading0(number) { return number < 10 ? "0" : "" }
+      function timeFormatter() {
+        let mins = parseInt((this.value / 100) / 60)
+        let secs = parseInt((this.value / 100) % 60)
+        let huns = parseInt(this.value % 100)
+        return leading0(mins) + mins + ':' + leading0(secs) + secs + ',' + leading0(huns) + huns
+      }
+
       document.addEventListener("DOMContentLoaded", event => {
-        let myChart = Highcharts.chart('container', {{=it.chart}})
+        {{~it :event:index}}
+          let chart{{=event.title}} = Highcharts.chart('chart{{=event.title}}', {
+            credits: { enabled: false },
+            chart: {
+                type: 'line',
+                zoomType: 'xy'
+            },
+            title: { text: '{{=event.title}}' || '' },
+            series: {{=event.series}},
+            xAxis: {
+              type: 'datetime',
+              min: {{=event.startFormatted}},
+              max: {{=event.endFormatted}},
+              crosshair: true,
+              dateTimeLabelFormats: {
+                day: '%a %e %b %H:%M'
+              },
+              title: { text: 'Date' },
+              gridLineWidth: 1
+            },
+            yAxis: {
+              crosshair: true,
+              min: {{=event.winTime}},
+              tickInterval: 100,
+              minorTickInterval: 50,
+              title: { text: 'Time' },
+              labels: {
+                formatter: timeFormatter
+              }
+            },
+            plotOptions: {
+              series: {
+                dataLabels: {
+                  enabled: true,
+                  format: '{point.formatted}'
+                }
+              }
+            },
+            tooltip: {
+              pointFormat: '{series.name}: <b>{point.formatted}</b><br/>'
+            }
+
+          })
+
+        {{~}}
+
       })
     </script>
+    <style>
+      body { font-family: sans-serif; margin: 0; padding: 0; }
+      #container { display: flex; flex-direction: row; }
+      #menu { flex: 1; background-color: #303734; max-width: 200px; }
+      #menu a {
+        text-decoration: none;
+        color: #a9bfb6;
+        display: block;
+        padding: 15px;
+        text-align: center;
+        border-top: 1px solid #1d211f;
+        border-bottom: 1px solid #46504c;
+      }
+      #menu a:hover { color: #70827b; }
+      #content { flex: 1; background-color: #cae2d8; }
+      th, td { padding: 3px }
+      .bar { min-width: 350px; background-color: #eaece8; }
+      .bar div { background-color: #5fa137; height: 20px; }
+      th:nth-child(2), td:nth-child(n+3) { text-align: right; }
+      .event { margin: 25px; padding: 15px; background-color: #fff; }
+    </style>
   </head>
   <body>
-    <div id="container" style="width:100%; height:400px;"></div>
+    <div id="container">
+      <nav id="menu">
+        {{~it :event:index}}
+          <a href="#{{=event.title}}">{{=event.title}}</a>
+        {{~}}
+      </nav>
+      <main id="content">
+        {{~it :event:index}}
+          <div id="{{=event.title}}" class="event">
+            <div id="chart{{=event.title}}" style="width:100%; height:600px;"></div>
+            <table>
+              <thead><tr><th colspan="6">Time leading event in total</th></tr></thead>
+              {{ for(var prop in event.durations) { }}
+              <tr>
+                <td>{{=prop}}</td><td>
+                  <div class="bar">
+                    <div style="width: {{=Math.ceil((event.durations[prop].ms / (event.endFormatted - event.startFormatted)) * 100)}}%"></div>
+                  </div>
+                </td>
+                <td>{{=event.durations[prop].days ? event.durations[prop].days + 'd' : ''}}</td>
+                <td>{{=event.durations[prop].hours}}h</td>
+                <td>{{=event.durations[prop].mins}}m</td>
+                <td>{{=event.durations[prop].secs}}s</td>
+              </tr>
+              {{ } }}
+            </table>
+          </div>
+        {{~}}
+      </main>
+    </div>
+
   </body>
 </html>

@@ -4,17 +4,23 @@ const dots = require("dot").process({ path: "./views", templateSettings: { strip
 const mkdirp = require('mkdirp')
 
 
-function fetchData(levelId, cb) {
+function fetchData(levelId) {
   let url = `http://elmaonline.net/API/times/${levelId}?bestall=all&noorder=0&timeformat=hs`
-  request(url, (error, response, body) => {
-    if (error) { cb(error) }
-    cb(null, body)
+  return new Promise((resolve, reject) => {
+    request(url, (error, response, body) => {
+      if (error) return reject(error)
+      return resolve(Object.values(JSON.parse(body)))
+    })
   })
 }
 
-function timeConversion(millisec) {
-  let date = new Date(millisec)
-  return `${date.getUTCDate()-1} days, ${date.getUTCHours()} hrs, ${date.getUTCMinutes()} mins, ${date.getUTCSeconds()} secs`
+function leading0(number) { return number < 10 ? "0" : "" }
+
+function hsToFormatted(hs) {
+  let mins = parseInt((hs / 100) / 60)
+  let secs = parseInt((hs / 100) % 60)
+  let huns = parseInt(hs % 100)
+  return leading0(mins) + mins + ":" + leading0(secs) + secs + "," + leading0(huns) + huns
 }
 
 function writeHTML(data) {
@@ -24,8 +30,6 @@ function writeHTML(data) {
       fs.writeFileSync('./dist/index.html', data)
   })
 }
-
-
 
 function calculateStats(data, deadline) {
   // convert string dates to Date objects, make up for -7hr timezone difference to UTC (?)
@@ -41,12 +45,17 @@ function calculateStats(data, deadline) {
 
   let leaders = []
   let durations = {}
+  let times = {}
 
   data.forEach(entry => {
+    let lead = false
+
     // check if before deadline
     if (entry.datetime.getTime() < deadline.getTime()) {
+      // leader checks
       if (leaders.length > 0) {
         if (parseInt(entry.time) < parseInt(leaders[leaders.length-1].time)) { // better than last leading time
+          lead = true
           if (durations[entry.kuski] === undefined) durations[entry.kuski] = 0
           durations[leaders[leaders.length-1].name] += Math.abs(leaders[leaders.length-1].date - entry.datetime)
           leaders.push({ name: entry.kuski, time: parseInt(entry.time), date: entry.datetime })
@@ -55,13 +64,44 @@ function calculateStats(data, deadline) {
         leaders.push({ name: entry.kuski, time: parseInt(entry.time), date: entry.datetime })
         durations[entry.kuski] = 0
       }
+
+      // add new nick to times list if not exist
+      if (!times[entry.kuski]) {
+        times[entry.kuski] = [{ time: parseInt(entry.time), date: entry.datetime, leader: lead }]
+
+      } else if (parseInt(entry.time) < times[entry.kuski][times[entry.kuski].length - 1].time) { // if nick exist, check if time better
+        times[entry.kuski].push({ time: parseInt(entry.time), date: entry.datetime, leader: lead })
+      }
     }
   })
 
   // finally add remaining time up to deadline to leader
   durations[leaders[leaders.length-1].name] += Math.abs(leaders[leaders.length-1].date - deadline)
 
-  return { leaders: leaders, durations: durations }
+  // order durations
+  const orderedDurations = {}
+  Object.keys(durations).sort((a, b) => {
+    return durations[b] - durations[a]
+  }).forEach(key => {
+    let date = new Date(durations[key])
+    orderedDurations[key] = {
+      ms: durations[key],
+      days: date.getUTCDate()-1,
+      hours: date.getUTCHours(),
+      mins: date.getUTCMinutes(),
+      secs: date.getUTCSeconds()
+    }
+  })
+
+  // order times by nick for chart
+  const orderedTimes = {}
+  Object.keys(times).sort((a, b) => {
+    return a.toLowerCase().localeCompare(b.toLowerCase())
+  }).forEach(key => {
+    orderedTimes[key] = times[key]
+  })
+
+  return { leaders: leaders, durations: orderedDurations, times: orderedTimes }
 }
 
 function hashColor(str) {
@@ -77,136 +117,69 @@ function hashColor(str) {
   return colour
 }
 
-function produceChart(data, startDate, endDate, options) {
+function produceRegularChart(data, startDate, endDate) {
   let startFormatted = Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate(),
     startDate.getUTCHours()-1, startDate.getUTCMinutes())
   let endFormatted = Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate(),
-    endDate.getUTCHours(), endDate.getUTCMinutes())
-  let { leaders, durations } = calculateStats(data, endDate)
+    endDate.getUTCHours()+1, endDate.getUTCMinutes())
+  let { leaders, durations, times } = data
 
-  let chart = {
-    title: {
-      text: options.title || ''
-    },
-    series: [{
-      data: [],
-      lineWidth: 1,
-      showInLegend: false,
-      name: 'Time',
-      zoneAxis: 'x',
-        zones: []
-    }],
-    xAxis: {
-      type: 'datetime',
-      tickInterval: 3600 * 1000 * 12,
-      min: startFormatted,
-      max: endFormatted,
-      title: { text: 'Date' }
-    },
-    yAxis: {
-      title: { text: 'Time' },
-    },
-    plotOptions: {
-      line: {
-        dataLabels: {
-          enabled: true,
-          format: '{point.name}',
-          allowOverlap: true,
-          defer: false,
-          // rotation: -30,
-          crop: false
-        },
-        marker: {
-          enabled: true,
-          radius: 3
-        }
-      },
-      series: {
-            states: {
-                hover: {
-                    enabled: false
-                }
-            }
-        }
-    }
+  let chartData = { series: [], startFormatted: startFormatted, endFormatted: endFormatted, winTime: leaders[leaders.length-1].time }
+
+  for (name in times) {
+    let data = []
+    times[name].forEach(time => {
+      let dateFormatted = Date.UTC(time.date.getUTCFullYear(), time.date.getUTCMonth(), time.date.getUTCDate(),
+        time.date.getUTCHours(), time.date.getUTCMinutes())
+      if (time.leader) {
+        data.push({ y: time.time, x: dateFormatted, formatted: hsToFormatted(time.time), dataLabels: {
+          format: `${hsToFormatted(time.time)}`, style: { color: '#ab2020', fontSize: '13px' }, zIndex: 10, allowOverlap: true }
+        })
+      } else {
+        data.push({ y: time.time, x: dateFormatted, formatted: hsToFormatted(time.time) })
+      }
+    })
+    // pad to past end date
+    data.push({ y: data[data.length-1].y, x: endFormatted + 86400000, formatted: hsToFormatted(data[data.length-1].y) })
+
+    chartData.series.push({ name: name, data: data, visible: durations[name] !== undefined, step: 'left', marker: { enabled: true }, color: hashColor(name) })
   }
 
-  leaders.forEach(entry => {
-    let dateFormatted = Date.UTC(entry.date.getUTCFullYear(), entry.date.getUTCMonth(), entry.date.getUTCDate(),
-      entry.date.getUTCHours(), entry.date.getUTCMinutes())
-    chart.series[0].data.push({ x: dateFormatted, y: entry.time, name: entry.name, marker: { fillColor: hashColor(entry.name) } })
-    chart.series[0].zones.push({
-        value: dateFormatted,
-        color: hashColor(entry.name)
+  return chartData
+}
+
+function createHTML(events) {
+  let eh = events.map(event => {
+    return fetchData(event.levelId).then(result => {
+      let { leaders, durations, times } = calculateStats(result, event.endDate)
+      let chartData = produceRegularChart({ leaders, durations, times }, event.startDate, event.endDate)
+      return {
+        title: event.title || '',
+        startFormatted: JSON.stringify(chartData.startFormatted, null, 2),
+        endFormatted: JSON.stringify(chartData.endFormatted, null, 2),
+        winTime: JSON.stringify(chartData.winTime, null, 2),
+        series: JSON.stringify(chartData.series, null, 2),
+        durations: durations
+      }
     })
   })
 
-  let lastEntry = leaders[leaders.length-1]
-  let lastEntryDateFormatted = Date.UTC(lastEntry.date.getUTCFullYear(), lastEntry.date.getUTCMonth()+1, lastEntry.date.getUTCDate())
-  chart.series[0].data.push({ x: lastEntryDateFormatted, y: lastEntry.time, name: lastEntry.name })
-  chart.series[0].zones.push({
-      color: hashColor(lastEntry.name)
-  })
-
-  return chart
+  Promise.all(eh).then(result => {
+    writeHTML(result)
+  }).catch(e => { console.log(e) })
 }
 
-// wc701
-// let startDate = new Date('2017-02-19 19:00')
-// let endDate = new Date('2017-02-26 17:00')
-// let levelId = 371127
-// fetchData(levelId, (err, data) => {
-//   data = Object.values(JSON.parse(data))
-//   let chartData = produceChart(data, startDate, endDate, { title: '', levelId: levelId })
-//   writeHTML({ chart: JSON.stringify(chartData, null, 2) })
-// })
 
-// wc702
-// let startDate = new Date('2017-02-26 17:00')
-// let endDate = new Date('2017-03-05 17:00')
-// let levelId = 371726
-// fetchData(levelId, (err, data) => {
-//   data = Object.values(JSON.parse(data))
-//   let chartData = produceChart(data, startDate, endDate, { title: '', levelId: levelId })
-//   writeHTML({ chart: JSON.stringify(chartData, null, 2) })
-// })
 
-// wc703
-// let startDate = new Date('2017-03-05 17:00')
-// let endDate = new Date('2017-03-12 18:00')
-// let levelId = 372197
-// fetchData(levelId, (err, data) => {
-//   data = Object.values(JSON.parse(data))
-//   let chartData = produceChart(data, startDate, endDate, { title: '', levelId: levelId })
-//   writeHTML({ chart: JSON.stringify(chartData, null, 2) })
-// })
 
-// wc704
-// let startDate = new Date('2017-03-12 18:00')
-// let endDate = new Date('2017-03-19 18:00')
-// let levelId = 372760
-// fetchData(levelId, (err, data) => {
-//   data = Object.values(JSON.parse(data))
-//   let chartData = produceChart(data, startDate, endDate, { title: '', levelId: levelId })
-//   writeHTML({ chart: JSON.stringify(chartData, null, 2) })
-// })
+let events = [
+  { title: "WCup701", startDate: new Date('2017-02-19 19:00'), endDate: new Date('2017-02-26 17:00'), levelId: 371127 },
+  { title: "WCup702", startDate: new Date('2017-02-26 17:00'), endDate: new Date('2017-03-05 17:00'), levelId: 371726 },
+  { title: "WCup703", startDate: new Date('2017-03-05 17:00'), endDate: new Date('2017-03-12 18:00'), levelId: 372197 },
+  { title: "WCup704", startDate: new Date('2017-03-12 18:00'), endDate: new Date('2017-03-19 18:00'), levelId: 372760 },
+  { title: "WCup706", startDate: new Date('2017-03-26 17:00'), endDate: new Date('2017-04-02 17:00'), levelId: 374120 },
+  { title: "WCup707", startDate: new Date('2017-04-02 17:00'), endDate: new Date('2017-04-09 17:00'), levelId: 374907 },
+  { title: "WCup708", startDate: new Date('2017-04-09 17:00'), endDate: new Date('2017-04-16 17:00'), levelId: 376243 },
+]
 
-// wc706
-// let startDate = new Date('2017-03-26 17:00')
-// let endDate = new Date('2017-04-02 17:00')
-// let levelId = 374120
-// fetchData(levelId, (err, data) => {
-//   data = Object.values(JSON.parse(data))
-//   let chartData = produceChart(data, startDate, endDate, { title: '', levelId: levelId })
-//   writeHTML({ chart: JSON.stringify(chartData, null, 2) })
-// })
-
-// wc707
-let startDate = new Date('2017-04-02 17:00')
-let endDate = new Date('2017-04-09 17:00')
-let levelId = 374907
-fetchData(levelId, (err, data) => {
-  data = Object.values(JSON.parse(data))
-  let chartData = produceChart(data, startDate, endDate, { title: '', levelId: levelId })
-  writeHTML({ chart: JSON.stringify(chartData, null, 2) })
-})
+createHTML(events)
