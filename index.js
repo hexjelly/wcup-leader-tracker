@@ -181,6 +181,7 @@ let events = [
   { title: "WCup707", startDate: new Date('2017-04-02 17:00'), endDate: new Date('2017-04-09 17:00'), levelId: 374907 },
   { title: "WCup708", startDate: new Date('2017-04-09 17:00'), endDate: new Date('2017-04-16 17:00'), levelId: 376243 },
   { title: "WCup709", startDate: new Date('2017-04-16 17:00'), endDate: new Date('2017-04-20 17:00'), levelId: 376749 },
+  { title: "WCup710", startDate: new Date('2017-04-20 17:00'), endDate: new Date('2017-04-23 17:00'), levelId: 376988 },
 ]
 
 createHTML(events)
