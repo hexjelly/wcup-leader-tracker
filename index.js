@@ -86,6 +86,7 @@ function calculateStats(data, deadline) {
     let date = new Date(durations[key])
     orderedDurations[key] = {
       ms: durations[key],
+      months: date.getUTCMonth(),
       days: date.getUTCDate()-1,
       hours: date.getUTCHours(),
       mins: date.getUTCMinutes(),
@@ -185,6 +186,8 @@ let events = [
   { title: "WCup711", startDate: new Date('2017-04-23 17:00'), endDate: new Date('2017-04-30 17:00'), levelId: 377165 },
   { title: "WCup712", startDate: new Date('2017-04-30 17:00'), endDate: new Date('2017-05-07 17:00'), levelId: 377517 },
   { title: "WCup713", startDate: new Date('2017-05-07 17:00'), endDate: new Date('2017-05-14 17:00'), levelId: 377914 },
+  { title: "WCup714", startDate: new Date('2017-05-14 17:00'), endDate: new Date('2017-05-21 17:00'), levelId: 378207 },
+  { title: "WCup715", startDate: new Date('2017-02-19 18:00'), endDate: new Date('2017-05-21 17:00'), levelId: 371130 },
 ]
 
 createHTML(events)

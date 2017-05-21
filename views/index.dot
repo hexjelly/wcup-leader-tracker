@@ -96,7 +96,7 @@
           <div id="{{=event.title}}" class="event">
             <div id="chart{{=event.title}}" style="width:100%; height:600px;"></div>
             <table>
-              <thead><tr><th colspan="6">Time leading event in total</th></tr></thead>
+              <thead><tr><th colspan="7">Time leading event in total</th></tr></thead>
               {{ for(var prop in event.durations) { }}
               <tr>
                 <td>{{=prop}}</td><td>
@@ -104,6 +104,7 @@
                     <div style="width: {{=Math.ceil((event.durations[prop].ms / (event.endFormatted - event.startFormatted)) * 100)}}%"></div>
                   </div>
                 </td>
+                <td>{{=event.durations[prop].months ? event.durations[prop].months + 'm' : ''}}</td>
                 <td>{{=event.durations[prop].days ? event.durations[prop].days + 'd' : ''}}</td>
                 <td>{{=event.durations[prop].hours}}h</td>
                 <td>{{=event.durations[prop].mins}}m</td>
